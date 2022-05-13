@@ -1,0 +1,57 @@
+version: '3'
+services:
+  influxdb:
+    image: influxdb:2.0-alpine
+    platform: linux/amd64
+    environment:
+      - INFLUXDB_DB=jmeter
+      - INFLUXDB_CONFIG_PATH=/tmp/influx.conf
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=root
+      - DOCKER_INFLUXDB_INIT_PASSWORD=P@ssw0rd
+      - DOCKER_INFLUXDB_INIT_ORG=telegraf
+      - DOCKER_INFLUXDB_INIT_BUCKET=telegraf
+      - DOCKER_INFLUXDB_INIT_RETENTION=1w
+    ports:
+      - '2003:2003' #Graphite
+      - '8086:8086' #Influx API
+    volumes:
+      - ./docker/influxdb/influx.conf:/tmp/influx.conf
+    networks:
+      - test-server
+  jmeter:
+    build:
+      context: .
+      dockerfile: docker/jmeter/Dockerfile
+      args:
+        - jmeterVersion=5.4.3
+    environment:
+      - JMETER_TEST=test.jmx
+      - JMETER_WEBURL=http://127.0.0.1:7001
+      - JMETER_THREADS=100
+      - JMETER_DURATION=60
+      - JMETER_RAMPUP=10
+    volumes:
+      - ./docker/jmeter/test:/jmeter/test/
+    depends_on:
+      - influxdb
+    networks:
+      - test-server
+  grafana:
+    build:
+      context: .
+      dockerfile: docker/grafana/Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-worldmap-panel,grafana-piechart-panel
+    volumes:
+      - ./docker/grafana/dashboards/jmeter.json:/var/lib/grafana/dashboards/jmeter.json
+    links:
+      - influxdb
+      - jmeter
+    networks:
+      - test-server
+networks:
+  test-server:
+    driver: bridge
