@@ -1,22 +1,24 @@
 version: '3'
 services:
   influxdb:
-    image: influxdb:2.0-alpine
+    image: influxdb:2.2-alpine
     platform: linux/amd64
     environment:
       - INFLUXDB_DB=jmeter
       - INFLUXDB_CONFIG_PATH=/tmp/influx.conf
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=root
-      - DOCKER_INFLUXDB_INIT_PASSWORD=P@ssw0rd
-      - DOCKER_INFLUXDB_INIT_ORG=telegraf
-      - DOCKER_INFLUXDB_INIT_BUCKET=telegraf
-      - DOCKER_INFLUXDB_INIT_RETENTION=1w
+      - DOCKER_INFLUXDB_INIT_MODE=${DOCKER_INFLUXDB_INIT_MODE}
+      - DOCKER_INFLUXDB_INIT_USERNAME=${DOCKER_INFLUXDB_INIT_USERNAME}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${DOCKER_INFLUXDB_INIT_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${DOCKER_INFLUXDB_INIT_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${DOCKER_INFLUXDB_INIT_BUCKET}
+      - DOCKER_INFLUXDB_INIT_RETENTION=${DOCKER_INFLUXDB_INIT_RETENTION}
     ports:
       - '2003:2003' #Graphite
       - '8086:8086' #Influx API
     volumes:
       - ./docker/influxdb/influx.conf:/tmp/influx.conf
+    restart: always
+    privileged: true
     networks:
       - test-server
   jmeter:
@@ -33,8 +35,9 @@ services:
       - JMETER_RAMPUP=10
     volumes:
       - ./docker/jmeter/test:/jmeter/test/
-    depends_on:
+    links:
       - influxdb
+    privileged: true
     networks:
       - test-server
   grafana:
@@ -50,6 +53,7 @@ services:
     links:
       - influxdb
       - jmeter
+    privileged: true
     networks:
       - test-server
 networks:
